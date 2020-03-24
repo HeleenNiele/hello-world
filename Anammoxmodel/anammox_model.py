@@ -170,14 +170,19 @@ if __name__ == "__main__":
     pH = 7.0
     NH_aanvoer_c = 1266.0
     TNO2_aanvoer_c = 0
-    SS_aanvoer_c = 246
+    OB_c = 246
     CZV_c = 1107
     Dagaanvoer = 212
     Batches = 4.25
     Perc_X_S = 0.05
     Q_aanvoer = Dagaanvoer/(24/Batches)
 
+    # Effluent information
+    NH_effluent = 393.0
+    NH4_effluent = 357.0
+
     # Fractionation feed
+    perc_CSV_S_s = 0.20
     K_e_NH = K_e_NH(Temp); K_e_NO = K_e_NO(Temp)
     NH_aanvoer_v = NH_aanvoer_c*Q_aanvoer/1000
     NH3_aanvoer_c = S_NH3(NH_aanvoer_c,pH,K_e_NH); NH3_aanvoer_v = NH3_aanvoer_c*Q_aanvoer/1000
@@ -185,8 +190,9 @@ if __name__ == "__main__":
     TNO2_aanvoer_v = TNO2_aanvoer_c*Q_aanvoer/1000
     HNO2_aanvoer_c = S_HNO2(TNO2_aanvoer_c,pH,K_e_NO); HNO2_aanvoer_v = HNO2_aanvoer_c*Q_aanvoer/1000
     NO2_aanvoer_c = TNO2_aanvoer_c-HNO2_aanvoer_c; NO2_aanvoer_v = NO2_aanvoer_c*Q_aanvoer/1000
-    X_S_aanvoer_c = Perc_X_S*SS_aanvoer_c; X_S_aanvoer_v = X_S_aanvoer_c*Q_aanvoer/1000
-    X_I_aanvoer_c = SS_aanvoer_c-X_S_aanvoer_c; X_I_aanvoer_v = X_I_aanvoer_c*Q_aanvoer/1000
+    X_S_aanvoer_c = Perc_X_S*OB_c; X_S_aanvoer_v = X_S_aanvoer_c*Q_aanvoer/1000
+    X_I_aanvoer_c = OB_c-X_S_aanvoer_c; X_I_aanvoer_v = X_I_aanvoer_c*Q_aanvoer/1000
+    S_s_aanvoer_c = perc_CSV_S_s*CZV_c; S_s_aanvoer_v = S_s_aanvoer_c*Q_aanvoer/1000
 
     # Reactor information
     reactor_volume = 412
@@ -211,7 +217,7 @@ if __name__ == "__main__":
     solution_v = np.zeros((len(rows),steps))
     volumes = np.zeros(steps)
 
-    feed_c = np.array([0.0,SS_aanvoer_c,NH_aanvoer_c,NH3_aanvoer_c,NH4_aanvoer_c,TNO2_aanvoer_c,HNO2_aanvoer_c,NO2_aanvoer_c,0.0,0.0,0.0,0.0,0.0,X_S_aanvoer_c,X_I_aanvoer_c,0.0])
+    feed_c = np.array([0.0,S_s_aanvoer_c,NH_aanvoer_c,NH3_aanvoer_c,NH4_aanvoer_c,TNO2_aanvoer_c,HNO2_aanvoer_c,NO2_aanvoer_c,0.0,0.0,0.0,0.0,0.0,X_S_aanvoer_c,X_I_aanvoer_c*invangen,0.0])
     feed_v = feed_c*Q_aanvoer/1000
     volumes[0] = reactor_volume
     volumes[1] = volumes[0]+Q_aanvoer
