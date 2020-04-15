@@ -5,52 +5,12 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import easygui
+import tkinter
+import csv
 
 #parameters
-Y_H = 0.52
-Y_NH = 0.15
-Y_NO = 0.041
-Y_AN = 0.159
-Y_HNO2 = 0.44
-Y_HNO3 = 0.44
-i_NBM = 0.07
-f_p = 0.08
-i_nxi = 0.02
-f_i = 0.1
-k_H = 3.0
-mu_H_max = 8.00#8.72
-mu_NH_max = 0.1#0.8 # of 2.02
-mu_NO_max = 0.4#0.79 # of 1.36
-mu_AN_max = 0.2#0.019
-K_X = 0.03
-K_O_H = 0.2
-K_S_H = 50 # of 20
-K_NO3_H = 1.0
-K_NO2_H = 1.0
-K_pH_NH = 8.21
-K_O_NH = 0.6 # of 0.235
-K_NH3_NH = 0.75 # of 0.85
-K_pH_NO = 8.66
-K_O_NO = 1.5
-K_HNO2_NO = 0.0008723
-K_pH_AN = 12.41
-K_NH_AN = 0.07
-K_TNO2_AN = 0.05
-K_O_AN = 0.01
-b_H = 0.30 # 0.62 of 2.32
-b_NO = 0.01 # 0.033 0.092
-b_NH = 0.02 # 0.05 of 0.19
-b_AN = 0.0015 # 0.0025
-theta_H = 0.069
-theta_NO = 0.061
-theta_NH = 0.094
-theta_AN = 0.096
-eta_NO2 = 0.6
-eta_NO3 = 0.6
-pH_opt_NH = 7.23
-pH_opt_NO = 7.85
-pH_opt_AN = 7.65
-Temp_r = 20
+
 
 def K_e_NH(Temp):
     K_e_NH = math.exp(-6344.0/(Temp+273.15))
@@ -60,9 +20,9 @@ def K_e_NO(Temp):
     K_e_NO = math.exp(-2300.0/(Temp+273.15))
     return K_e_NO
 
-def S_O(p_2,p_6,p_8):
-    s_o = p_2*(Y_H-1)/Y_H+p_6*(Y_NH-3.43)/Y_NH+p_8*(Y_NO-1.14)/Y_NO
-    return s_o
+def KLA(O_sat,zuurstof,p_2,p_6,p_8):
+    kla =  -(p_2*(Y_H-1)/Y_H+p_6*(Y_NH-3.43)/Y_NH+p_8*(Y_NO-1.14)/Y_NO)/(O_sat-(zuurstof+0.1))
+    return kla
 
 def S_S(p_1,p_2,p_4,p_5):
     s_s = p_1-p_2/Y_H-p_4/Y_HNO3-p_5/Y_HNO2
@@ -149,7 +109,7 @@ def P_7(x_nh):
     return p_7
 
 def P_8(s_o,s_hno2,x_no):
-    p_8 = mu_NO_max*math.exp(theta_NO*(Temp-Temp_r))*K_pH_NO/(K_pH_NO-1+10**abs(pH_opt_NO-pH))*s_o/(K_O_NO+s_o)*s_hno2/(K_HNO2_NO+s_hno2)*x_no
+    p_8 = mu_NO_max*math.exp(theta_NO*(Temp-Temp_r))*K_pH_NO/(K_pH_NO-1+10.0**abs(pH_opt_NO-pH))*s_o/(K_O_NO+s_o)*s_hno2/(K_HNO2_NO+s_hno2)*x_no
     return p_8    
 
 def P_9(x_no,Temp):
@@ -157,7 +117,7 @@ def P_9(x_no,Temp):
     return p_9
 
 def P_10(s_nh,s_tno2,s_o,x_an,Temp,pH):
-    p_10 = mu_AN_max*math.exp(theta_AN*(Temp-Temp_r))*K_pH_AN/(K_pH_AN-1+10**abs(pH_opt_AN-pH))*s_nh/(K_NH_AN+s_nh)*s_tno2/(K_TNO2_AN+s_tno2)*K_O_AN/(K_O_AN+s_o)*x_an    
+    p_10 = mu_AN_max*math.exp(theta_AN*(Temp-Temp_r))*K_pH_AN/(K_pH_AN-1+10.0**abs(pH_opt_AN-pH))*s_nh/(K_NH_AN+s_nh)*s_tno2/(K_TNO2_AN+s_tno2)*K_O_AN/(K_O_AN+s_o)*x_an    
     return p_10
 
 def P_11(x_an,Temp):
@@ -165,209 +125,309 @@ def P_11(x_an,Temp):
     return p_11
 
 if __name__ == "__main__":
-    # Influent information
-    Temp = 32.3
-    pH = 7.0
-    NH_aanvoer_c = 1266.0
-    TNO2_aanvoer_c = 0
-    OB_aanvoer_c = 246
-    CZV_aanvoer_c = 1107
-    Dagaanvoer = 212
-    Batches = 4.25
-    Perc_X_S = 0.05
-    Q_aanvoer = Dagaanvoer/(24/Batches)
-    Tijd_Q_aanvoer = 20 # 20 minuten
-    Tijd_overig = Batches*60-Tijd_Q_aanvoer
-    perc_CSV_S_s = 0.20
+    print("Geef invoerbestand op.")
+    input_file = easygui.fileopenbox(title="Please select an inputfile")
 
-    # Fractionation feed
-    K_e_NH = K_e_NH(Temp); K_e_NO = K_e_NO(Temp)
-    NH_aanvoer_v = NH_aanvoer_c*Q_aanvoer/1000
-    NH3_aanvoer_c = S_NH3(NH_aanvoer_c,pH,K_e_NH); NH3_aanvoer_v = NH3_aanvoer_c*Q_aanvoer/1000
-    NH4_aanvoer_c = NH_aanvoer_c-NH3_aanvoer_c; NH4_aanvoer_v = NH4_aanvoer_c*Q_aanvoer/1000
-    TNO2_aanvoer_v = TNO2_aanvoer_c*Q_aanvoer/1000
-    HNO2_aanvoer_c = S_HNO2(TNO2_aanvoer_c,pH,K_e_NO); HNO2_aanvoer_v = HNO2_aanvoer_c*Q_aanvoer/1000
-    NO2_aanvoer_c = TNO2_aanvoer_c-HNO2_aanvoer_c; NO2_aanvoer_v = NO2_aanvoer_c*Q_aanvoer/1000
-    X_S_aanvoer_c = Perc_X_S*OB_aanvoer_c; X_S_aanvoer_v = X_S_aanvoer_c*Q_aanvoer/1000
-    X_I_aanvoer_c = OB_aanvoer_c-X_S_aanvoer_c; X_I_aanvoer_v = X_I_aanvoer_c*Q_aanvoer/1000
-    S_s_aanvoer_c = perc_CSV_S_s*CZV_aanvoer_c; S_s_aanvoer_v = S_s_aanvoer_c*Q_aanvoer/1000
+    print("Geef uitvoermap op.")
+    root = tkinter.Tk()
+    root.withdraw()
+    output_path = tkinter.filedialog.askdirectory(parent=root,initialdir="/",title='Please select an output directory')
 
-    # Reactor information
-    reactor_volume = 412
-    nitrogen_load_reactor = reactor_volume/((NH_aanvoer_v+TNO2_aanvoer_v)*Batches)
-    verblijftijd = reactor_volume/Dagaanvoer
-    zuurstof = 0.2
-    dsg_max = 4.5
-    uitspoeling_slib = 0.0
-    invangen = 0.0
+    try:
+        # Read input and store in dictionary
+        params = {}
+        read_input = open(input_file)
+        for line in read_input:
+            line = line.strip()
+            if not line.startswith("#"):
+                key_value = line.split("=")
+                if len(key_value) == 2:
+                    params[key_value[0].strip()] = key_value[1].strip()
 
-    # Additional values
-    steps_per_minute = 5
-    Td = 1./(24*60*steps_per_minute)#Batches/(24*(steps-5))
-    steps_filling = int(Tijd_Q_aanvoer*steps_per_minute)
-    steps_overig = int(Tijd_overig*steps_per_minute)
-    steps = steps_filling + steps_overig
-    Q_aanvoer_per_step = Q_aanvoer/steps_filling
+        print(params)
+        # parameters
+        Y_H = float(params["Y_H"])
+        Y_NH = float(params["Y_NH"])
+        Y_NO = float(params["Y_NO"])
+        Y_AN = float(params["Y_AN"])
+        Y_HNO2 = float(params["Y_HNO2"])
+        Y_HNO3 = float(params["Y_HNO3"])
+        i_NBM = float(params["i_NBM"])
+        f_p = float(params["f_p"])
+        i_nxi = float(params["i_nxi"])
+        f_i = float(params["f_i"])
+        k_H = float(params["k_H"])
+        mu_H_max = float(params["mu_H_max"])
+        mu_NH_max = float(params["mu_NH_max"])
+        mu_NO_max = float(params["mu_NO_max"])
+        mu_AN_max = float(params["mu_AN_max"])
+        K_X = float(params["K_X"])
+        K_O_H = float(params["K_O_H"])
+        K_S_H = float(params["K_S_H"])
+        K_NO3_H = float(params["K_NO3_H"])
+        K_NO2_H = float(params["K_NO2_H"])
+        K_pH_NH = float(params["K_pH_NH"])
+        K_O_NH = float(params["K_O_NH"])
+        K_NH3_NH = float(params["K_NH3_NH"])
+        K_pH_NO = float(params["K_pH_NO"])
+        K_O_NO = float(params["K_O_NO"])
+        K_HNO2_NO = float(params["K_HNO2_NO"])
+        K_pH_AN = float(params["K_pH_AN"])
+        K_NH_AN = float(params["K_NH_AN"])
+        K_TNO2_AN = float(params["K_TNO2_AN"])
+        K_O_AN = float(params["K_O_AN"])
+        b_H = float(params["b_H"])
+        b_NO = float(params["b_NO"])
+        b_NH = float(params["b_NH"])
+        b_AN = float(params["b_AN"])
+        theta_H = float(params["theta_H"])
+        theta_NO = float(params["theta_NO"])
+        theta_NH = float(params["theta_NH"])
+        theta_AN = float(params["theta_AN"])
+        eta_NO2 = float(params["eta_NO2"])
+        eta_NO3 = float(params["eta_NO3"])
+        pH_opt_NH = float(params["pH_opt_NH"])
+        pH_opt_NO = float(params["pH_opt_NO"])
+        pH_opt_AN = float(params["pH_opt_AN"])
+        Temp_r = float(params["Temp_r"])
 
-    # Effluent information
-    NH_effluent_c = 393.0
-    NH4_effluent_c = 357.0
-    NH3_effluent_c = NH_effluent_c - NH4_effluent_c
-    CZV_effluent_c = 811.0
-    S_s_effluent_c = CZV_effluent_c*perc_CSV_S_s
-    OB_effluent_c = 268.0
-    X_S_effluent_c = Perc_X_S*OB_effluent_c
-    X_I_effluent_c = OB_effluent_c - X_S_effluent_c
-    TNO2_effluent_c = 16.0; HNO2_effluent_c = S_HNO2(TNO2_effluent_c,pH,K_e_NO); NO2_effluent_c = TNO2_effluent_c - HNO2_effluent_c
-    TNO3_effluent_c = 51.0
+        print(K_X,K_O_AN,Temp_r)
 
-    effluent_c = [zuurstof,S_s_effluent_c,NH_effluent_c,NH3_effluent_c,NH4_effluent_c,TNO2_effluent_c,HNO2_effluent_c,NO2_effluent_c,TNO3_effluent_c,0,0,0,0,0,X_S_effluent_c,X_I_effluent_c*invangen,0]
-    ##############################################################################
-    """Step process"""
+        # Influent information
+        Temp = float(params["Temp"])
+        O_sat = 483.7/(32.71+Temp)
+        pH = float(params["pH"])
+        NH_aanvoer_c = float(params["NH_aanvoer_c"])
+        TNO2_aanvoer_c = float(params["TNO2_aanvoer_c"])
+        OB_aanvoer_c = float(params["OB_aanvoer_c"])
+        CZV_aanvoer_c = float(params["CZV_aanvoer_c"])
+        Dagaanvoer = float(params["Dagaanvoer"])
+        Batches = float(params["Batches"])
+        Perc_X_S = float(params["Perc_X_S"])
+        Q_aanvoer = Dagaanvoer/(24/(Batches/60))
+        Tijd_Q_aanvoer = float(params["Tijd_Q_aanvoer"])
+        Tijd_overig = Batches-Tijd_Q_aanvoer
+        perc_CSV_S_s = float(params["perc_CSV_S_s"])
 
-    #initialize solution matrix
-    rows = ['S_O','S_S','S_NH','S_NH3','S_NH4','S_TNO2',"S_HNO2",'S_NO2','S_TNO3','S_N2','X_H','X_NH','X_NO','X_S','X_I','X_AN']
-    solution_c = np.zeros((len(rows),steps+5)) #klopt 4?
-    solution_v = np.zeros((len(rows),steps+5))
-    volumes = np.zeros(steps+5)
+        # Fractionation feed
+        K_e_NH = K_e_NH(Temp); K_e_NO = K_e_NO(Temp)
+        NH_aanvoer_v = NH_aanvoer_c*Q_aanvoer/1000
+        NH3_aanvoer_c = S_NH3(NH_aanvoer_c,pH,K_e_NH); NH3_aanvoer_v = NH3_aanvoer_c*Q_aanvoer/1000
+        NH4_aanvoer_c = NH_aanvoer_c-NH3_aanvoer_c; NH4_aanvoer_v = NH4_aanvoer_c*Q_aanvoer/1000
+        TNO2_aanvoer_v = TNO2_aanvoer_c*Q_aanvoer/1000
+        HNO2_aanvoer_c = S_HNO2(TNO2_aanvoer_c,pH,K_e_NO); HNO2_aanvoer_v = HNO2_aanvoer_c*Q_aanvoer/1000
+        NO2_aanvoer_c = TNO2_aanvoer_c-HNO2_aanvoer_c; NO2_aanvoer_v = NO2_aanvoer_c*Q_aanvoer/1000
+        X_S_aanvoer_c = Perc_X_S*OB_aanvoer_c; X_S_aanvoer_v = X_S_aanvoer_c*Q_aanvoer/1000
+        X_I_aanvoer_c = OB_aanvoer_c-X_S_aanvoer_c; X_I_aanvoer_v = X_I_aanvoer_c*Q_aanvoer/1000
+        S_s_aanvoer_c = perc_CSV_S_s*CZV_aanvoer_c; S_s_aanvoer_v = S_s_aanvoer_c*Q_aanvoer/1000
 
-    feed_c = np.array([0.0,S_s_aanvoer_c,NH_aanvoer_c,NH3_aanvoer_c,NH4_aanvoer_c,TNO2_aanvoer_c,HNO2_aanvoer_c,NO2_aanvoer_c,0.0,0.0,0.0,0.0,0.0,X_S_aanvoer_c,X_I_aanvoer_c*invangen,0.0])
-    feed_v = feed_c*Q_aanvoer_per_step/1000
-    volumes[0] = reactor_volume
+        # Reactor information
+        # PAS AAN TODO
+        reactor_volume_totaal = float(params["reactor_volume"])
+        reactor_volume = reactor_volume_totaal - Q_aanvoer
+        nitrogen_load_reactor = reactor_volume/((NH_aanvoer_v+TNO2_aanvoer_v)*Batches)
+        verblijftijd = reactor_volume/Dagaanvoer
+        zuurstof = float(params["zuurstof"])
+        alfa = float(params["alfa"])
+        dsg_max = float(params["dsg_max"])
+        uitspoeling_slib = float(params["uitspoeling_slib"])
+        invangen = float(params["invangen"])
 
-    start = np.array([zuurstof,100.0,400.0,0.0,400.0,0.0,0.0,0.0,0.0,0.0,1000.0,100.0,10.0,1000.0,100.0,200.0])
+        # Additional values
+        steps_per_minute = int(params["steps_per_minute"])
+        Td = 1.0/(24*60*float(steps_per_minute))
+        steps_filling = int(Tijd_Q_aanvoer*steps_per_minute)
+        steps_overig = int(Tijd_overig*steps_per_minute)
+        steps = steps_filling + steps_overig
+        if Q_aanvoer>0:
+            Q_aanvoer_per_step = Q_aanvoer/steps_filling
+        else:
+            Q_aanvoer_per_step = 0
+        iterations = int(params["iterations"])
 
-    solution_c[:,0] = start
+        # Effluent information       
+        NH4_effluent_c = float(params["NH4_effluent_c"])
+        NH_effluent_c = NH4_effluent_c*(1+K_e_NH/10**(-pH))
+        NH3_effluent_c = NH_effluent_c - NH4_effluent_c
+        CZV_effluent_c = float(params["CZV_effluent_c"])
+        S_s_effluent_c = CZV_effluent_c*perc_CSV_S_s
+        OB_effluent_c = float(params["OB_effluent_c"])
+        X_S_effluent_c = Perc_X_S*OB_effluent_c
+        X_I_effluent_c = OB_effluent_c - X_S_effluent_c
+        TNO2_effluent_c = float(params["TNO2_effluent_c"]); HNO2_effluent_c = S_HNO2(TNO2_effluent_c,pH,K_e_NO); NO2_effluent_c = TNO2_effluent_c - HNO2_effluent_c
+        TNO3_effluent_c = float(params["TNO3_effluent_c"])
 
-    iterations = 1000
-    result_matrix = np.zeros((len(rows),iterations))
-    result_p = np.zeros((11,iterations))
-
-    spuislib_matrix = np.zeros((3,iterations))
-
-    for i in range(iterations):
-        print(i)
-        if i >0:
-            solution_c[:,0] = solution_c[:,-1]
-
-        solution_v[:,0] = solution_c[:,0]*volumes[0]/1000
-
-        for step in range(steps_filling):
-            # Input
-            input_vector = solution_c[:,step]
+        effluent_c = [zuurstof,S_s_effluent_c,NH_effluent_c,NH3_effluent_c,NH4_effluent_c,TNO2_effluent_c,HNO2_effluent_c,NO2_effluent_c,TNO3_effluent_c,0,0,0,0,0,X_S_effluent_c,X_I_effluent_c*invangen,0]
         
-            s_o = input_vector[0]; s_s = input_vector[1]; s_nh = input_vector[2]; s_nh3 = input_vector[3]; s_nh4 = input_vector[4]; s_tno2 = input_vector[5];
-            s_hno2 = input_vector[6]; s_no2 =input_vector[7]; s_tno3 = input_vector[8]; s_n2 = input_vector[9]; x_h = input_vector[10]; x_nh = input_vector[11];
-            x_no = input_vector[12]; x_s = input_vector[13]; x_i = input_vector[14]; x_an = input_vector[15]
+        print("Parameters zijn ingelezen.")
 
-            # New kinetics
-            p_1 = P_1(x_s,x_h); p_2 = P_2(zuurstof,s_s,x_h,Temp); p_3 = P_3(x_h,Temp); p_4 = P_4(zuurstof,s_tno3,s_s,x_h,Temp); p_5 = P_5(zuurstof,s_tno2,s_s,x_h,Temp);
-            p_6 = P_6(zuurstof,s_nh3,x_nh,Temp,pH); p_7 = P_7(x_nh); p_8 = P_8(zuurstof,s_hno2,x_no); p_9 = P_9(x_no,Temp); p_10 = P_10(s_nh,s_tno2,zuurstof,x_an,Temp,pH); 
-            p_11 = P_11(x_an, Temp)
+        ##############################################################################
+        """Step process"""
+
+        #initialize solution matrix
+        rows = ['S_O','S_S','S_NH','S_NH3','S_NH4','S_TNO2',"S_HNO2",'S_NO2','S_TNO3','S_N2','X_H','X_NH','X_NO','X_S','X_I','X_AN']
+        solution_c = np.zeros((len(rows),steps+3)) #klopt 4?
+        solution_v = np.zeros((len(rows),steps+3))
+        volumes = np.zeros(steps+3)
+
+        feed_c = np.array([0.0,S_s_aanvoer_c,NH_aanvoer_c,NH3_aanvoer_c,NH4_aanvoer_c,TNO2_aanvoer_c,HNO2_aanvoer_c,NO2_aanvoer_c,0.0,0.0,0.0,0.0,0.0,X_S_aanvoer_c,X_I_aanvoer_c*invangen,0.0])
+        feed_v = feed_c*Q_aanvoer_per_step/1000
+        volumes[0] = reactor_volume
+
+        start = np.array([100.0,28.0,357.0,3.3,354.0,16.0,0.02,16.0,51.0,800.0,35.0,220.0,0.0,500.0,4000.0,2000.0])
+
+        solution_c[:,0] = start
+
+        result_matrix = np.zeros((len(rows),iterations))
+        result_p = np.zeros((11,iterations))
+        result_vracht = np.zeros(iterations)
+
+        print("Iteraties worden doorlopen ...")
+
+        for i in range(iterations):
+            if i >0:
+                solution_c[:,0] = solution_c[:,-1]
+
+            solution_v[:,0] = solution_c[:,0]*volumes[0]/1000
+
+            for step in range(steps_filling):
+                # Input
+                input_vector = solution_c[:,step]
             
-            # New concentrations
-            solution_c[0,1+step] = zuurstof#s_o + Td*S_O(p_2,p_6,p_8);
-            solution_c[1,1+step] = s_s + Td*S_S(p_1,p_2,p_4,p_5); solution_c[2,1+step] = s_nh + Td*S_NH(p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11);
-            solution_c[3,1+step] = s_nh3 + Td*S_NH3(s_nh,pH,K_e_NH); solution_c[4,1+step] = solution_c[2,1+step]-solution_c[3,1+step]; solution_c[5,1+step] = s_tno2 + Td*S_TNO2(p_4,p_5,p_6,p_8,p_10);
-            solution_c[6,1+step] = s_hno2 + Td*S_HNO2(s_tno2,pH,K_e_NO); solution_c[7,1+step] = solution_c[5,1+step] - solution_c[6,1+step]; solution_c[8,1+step] = s_tno3 + Td*S_TNO3(p_4,p_8,p_10)
-            solution_c[9,1+step] = s_n2 + Td*S_N2(p_5,p_10); solution_c[10,1+step] = x_h + Td*X_H(p_2,p_3,p_4,p_5); solution_c[11,1+step] = x_nh + Td*X_NH(p_6,p_7); solution_c[12,1+step] = x_no + Td*X_NO(p_8,p_9); 
-            solution_c[13,1+step] = x_s + Td*X_S(p_1,p_3,p_7,p_9,p_11); solution_c[14,1+step] = x_i + Td*X_I(p_3,p_7,p_9,p_11); solution_c[15,1+step] = x_an + Td*X_AN(p_10,p_11)
+                s_o = input_vector[0]; s_s = input_vector[1]; s_nh = input_vector[2]; s_nh3 = input_vector[3]; s_nh4 = input_vector[4]; s_tno2 = input_vector[5];
+                s_hno2 = input_vector[6]; s_no2 =input_vector[7]; s_tno3 = input_vector[8]; s_n2 = input_vector[9]; x_h = input_vector[10]; x_nh = input_vector[11];
+                x_no = input_vector[12]; x_s = input_vector[13]; x_i = input_vector[14]; x_an = input_vector[15]
 
-            solution_v[:,1+step] = solution_c[:,1+step]*volumes[step]/1000.0 + feed_v
-            volumes[step+1] = volumes[step] + Q_aanvoer_per_step
-            solution_c[:,1+step] = solution_v[:,1+step]*1000.0/volumes[step+1]
+                # New kinetics
+                p_1 = P_1(x_s,x_h); p_2 = P_2(zuurstof,s_s,x_h,Temp); p_3 = P_3(x_h,Temp); p_4 = P_4(zuurstof,s_tno3,s_s,x_h,Temp); p_5 = P_5(zuurstof,s_tno2,s_s,x_h,Temp);
+                p_6 = P_6(zuurstof,s_nh3,x_nh,Temp,pH); p_7 = P_7(x_nh); p_8 = P_8(zuurstof,s_hno2,x_no); p_9 = P_9(x_no,Temp); p_10 = P_10(s_nh,s_tno2,zuurstof,x_an,Temp,pH); 
+                p_11 = P_11(x_an, Temp)
 
-        for step in range(steps_filling,steps):
-            # Input
-            input_vector = solution_c[:,step]
+                # New concentrations
+                kla = KLA(O_sat,zuurstof,p_2,p_6,p_8); kla_vies = kla/24.0;
+                kla_schoon = (kla_vies/1.025**(Temp-Temp_r))/alfa
+                OC_schoon = kla_schoon*O_sat
+                solution_c[0,1+step] = OC_schoon
+                solution_c[1,1+step] = max(s_s + Td*S_S(p_1,p_2,p_4,p_5),0.0); solution_c[2,1+step] = max(0.0,s_nh + Td*S_NH(p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11));
+                solution_c[3,1+step] = max(0.0,S_NH3(s_nh,pH,K_e_NH)); solution_c[4,1+step] = max(0.0,solution_c[2,1+step]-solution_c[3,1+step]); solution_c[5,1+step] = max(0.0,s_tno2 + Td*S_TNO2(p_4,p_5,p_6,p_8,p_10));
+                solution_c[6,1+step] = max(0.0,s_hno2 + Td*S_HNO2(s_tno2,pH,K_e_NO)); solution_c[7,1+step] = max(0.0,solution_c[5,1+step] - solution_c[6,1+step]); solution_c[8,1+step] = max(0.0,s_tno3 + Td*S_TNO3(p_4,p_8,p_10))
+                solution_c[9,1+step] = max(0.0,s_n2 + Td*S_N2(p_5,p_10)); solution_c[10,1+step] = max(0.0,x_h + Td*X_H(p_2,p_3,p_4,p_5)); solution_c[11,1+step] = max(0.0,x_nh + Td*X_NH(p_6,p_7)); solution_c[12,1+step] = max(0.0,x_no + Td*X_NO(p_8,p_9)); 
+                solution_c[13,1+step] = max(0.0,x_s + Td*X_S(p_1,p_3,p_7,p_9,p_11)); solution_c[14,1+step] = max(0.0,x_i + Td*X_I(p_3,p_7,p_9,p_11)); solution_c[15,1+step] = max(0.0,x_an + Td*X_AN(p_10,p_11))
+
+                solution_v[:,1+step] = solution_c[:,1+step]*volumes[step]/1000.0 + feed_v
+                volumes[step+1] = volumes[step] + Q_aanvoer_per_step
+                solution_c[:,1+step] = solution_v[:,1+step]*1000.0/volumes[step+1]
+
+            for step in range(steps_filling,steps):
+                # Input
+                input_vector = solution_c[:,step]
+            
+                s_o = input_vector[0]; s_s = input_vector[1]; s_nh = input_vector[2]; s_nh3 = input_vector[3]; s_nh4 = input_vector[4]; s_tno2 = input_vector[5];
+                s_hno2 = input_vector[6]; s_no2 = input_vector[7]; s_tno3 = input_vector[8]; s_n2 = input_vector[9]; x_h = input_vector[10]; x_nh = input_vector[11];
+                x_no = input_vector[12]; x_s = input_vector[13]; x_i = input_vector[14]; x_an = input_vector[15]
+
+                # New kinetics
+                p_1 = P_1(x_s,x_h); p_2 = P_2(zuurstof,s_s,x_h,Temp); p_3 = P_3(x_h,Temp); p_4 = P_4(zuurstof,s_tno3,s_s,x_h,Temp); p_5 = P_5(zuurstof,s_tno2,s_s,x_h,Temp);
+                p_6 = P_6(zuurstof,s_nh3,x_nh,Temp,pH); p_7 = P_7(x_nh); p_8 = P_8(zuurstof,s_hno2,x_no); p_9 = P_9(x_no,Temp); p_10 = P_10(s_nh,s_tno2,zuurstof,x_an,Temp,pH); 
+                p_11 = P_11(x_an, Temp)
+                
+                # New concentrations
+                solution_c[0,1+step] = KLA(O_sat,zuurstof,p_2,p_6,p_8);
+                solution_c[1,1+step] = max(0.0,s_s + Td*S_S(p_1,p_2,p_4,p_5)); solution_c[2,1+step] = max(0.0,s_nh + Td*S_NH(p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11));
+                solution_c[3,1+step] = max(0.0,S_NH3(s_nh,pH,K_e_NH)); solution_c[4,1+step] = max(0.0,solution_c[2,1+step]-solution_c[3,1+step]); solution_c[5,1+step] = max(0.0,s_tno2 + Td*S_TNO2(p_4,p_5,p_6,p_8,p_10));
+                solution_c[6,1+step] = max(0.0,s_hno2 + Td*S_HNO2(s_tno2,pH,K_e_NO)); solution_c[7,1+step] = max(0.0,solution_c[5,1+step] - solution_c[6,1+step]); solution_c[8,1+step] = max(0.0,s_tno3 + Td*S_TNO3(p_4,p_8,p_10));
+                solution_c[9,1+step] = max(0.0,s_n2 + Td*S_N2(p_5,p_10)); solution_c[10,1+step] = max(0.0,x_h + Td*X_H(p_2,p_3,p_4,p_5)); solution_c[11,1+step] = max(0.0,x_nh + Td*X_NH(p_6,p_7)); solution_c[12,1+step] = max(0.0,x_no + Td*X_NO(p_8,p_9)); 
+                solution_c[13,1+step] = max(0.0,x_s + Td*X_S(p_1,p_3,p_7,p_9,p_11)); solution_c[14,1+step] = max(0.0,x_i + Td*X_I(p_3,p_7,p_9,p_11)); solution_c[15,1+step] = max(0.0,x_an + Td*X_AN(p_10,p_11))
+
+                volumes[step+1] = volumes[step]
+                solution_v[:,1+step] = solution_c[:,1+step]*volumes[step+1]/1000.0
+
+            result_p[:,i] = [p_1,p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11]
+            
+            # Effluent
+            x_h = solution_c[-6,-3]; x_nh = solution_c[-5,-3]; x_no = solution_c[-4,-3]; x_s = solution_c[-3,-3]; x_i = solution_c[-2,-3]; x_an = solution_c[-1,-3]
+            dsg_reactor = ((x_h+x_no+x_nh+x_s+x_an)/1.6+x_i)/1000
+            # laat zoveel uitspoelen dat er 5,5 g/l overblijft
+            dsg_uitspoelen = max(dsg_reactor-dsg_max,0.0)
+            factor_uitspoelen = dsg_uitspoelen/dsg_reactor
+            slibleeftijd = (dsg_reactor/(dsg_uitspoelen))/(24*60/Batches)
+
+            volumes[-2] = Q_aanvoer
+            solution_v[:,-2] = solution_v[:,-3]*volumes[-2]/volumes[-3]
+            solution_v[-6:,-2] = solution_v[-6:,-2]*factor_uitspoelen
+            solution_c[:,-2] = solution_v[:,-2]*1000/volumes[-2]
+            
+            # Stap na aflaat
+            volumes[-1] = volumes[-3]-volumes[-2]
+            solution_v[:,-1] = solution_v[:,-3]-solution_v[:,-2]
+            solution_c[:,-1] = solution_v[:,-1]*1000/volumes[-1]
+            result_matrix[:,i] = solution_c[:,-1]
+
+            result_vracht[i] = solution_c[0,-1]*(reactor_volume+Q_aanvoer)/1000
+     
+        #print("Het dgs, gewicht aan spuislib, volume en de slibleeftijd zijn: %f, %f, %f, %f"%(dsg_reactor, spuislib, volumes[-3],slibleeftijd))
+        print("Slibleeftijd, dsg_uitspoelen, dsg+uitspoel: %f, %f, %f"%(slibleeftijd,dsg_uitspoelen,dsg_reactor))
+        print("Alle iteraties zijn doorlopen.")
+        print("Plots wegschrijven ...")
+        plott = True
+        if plott == True:
+            # plt.plot(spuislib_matrix[0],label = "dsg reactor")
+            # plt.plot(spuislib_matrix[1], label = "spuislib")
+            # plt.plot(spuislib_matrix[2], label = "spuislib_m3")
+            # plt.legend()
+            # output_dgs = str(output_path)+"\drogestofgehaltes.png"
+            # plt.savefig(output_dgs)
+            # plt.close()
+
+            figp, axesp = plt.subplots(4,3,figsize=(20,20))
+            plt.subplots_adjust(hspace=0.3,wspace = 0.3)
+            for indexp in range(11): #len(rows)
+                axesp[math.floor(indexp/3),indexp%3].plot(result_p[indexp])
+                axesp[math.floor(indexp/3),indexp%3].set_title("p_%i"%(indexp+1))
+            output_kineticts = output_path + "\kinetische_factoren.png"
+            plt.savefig(output_kineticts)
+            plt.close()
+
+            fig, axes = plt.subplots(4,4,figsize=(20, 20))
+            plt.subplots_adjust(hspace=0.3,wspace = 0.3)
+            for index in range(len(rows)): #len(rows)
+                if effluent_c[index] != 0:
+                    axes[math.floor(index/4),index%4].hlines(y=effluent_c[index],xmin=0,xmax=iterations, color='r', linestyle='-')
+                    #axes[math.floor(index/4),index%4].plot(effluent_c[index])
+                axes[math.floor(index/4),index%4].plot(result_matrix[index])
+                axes[math.floor(index/4),index%4].set_title(rows[index])
+            output_concentrations = output_path + "\concentraties.png"
+            plt.savefig(output_concentrations)
+            plt.close()
+
+            plt.plot(result_vracht)
+            output_zuurstof = output_path + "\zuurstofvracht.png"
+            plt.savefig(output_zuurstof)
+            plt.close()
+        print("Alle plots zijn weggeschreven.")
+
         
-            s_o = input_vector[0]; s_s = input_vector[1]; s_nh = input_vector[2]; s_nh3 = input_vector[3]; s_nh4 = input_vector[4]; s_tno2 = input_vector[5];
-            s_hno2 = input_vector[6]; s_no2 =input_vector[7]; s_tno3 = input_vector[8]; s_n2 = input_vector[9]; x_h = input_vector[10]; x_nh = input_vector[11];
-            x_no = input_vector[12]; x_s = input_vector[13]; x_i = input_vector[14]; x_an = input_vector[15]
+        #zuurstof_inbreng = OC_schoon*24/(NH_aanvoer_v+TNO2_aanvoer_v)
 
-            # New kinetics
-            p_1 = P_1(x_s,x_h); p_2 = P_2(zuurstof,s_s,x_h,Temp); p_3 = P_3(x_h,Temp); p_4 = P_4(zuurstof,s_tno3,s_s,x_h,Temp); p_5 = P_5(zuurstof,s_tno2,s_s,x_h,Temp);
-            p_6 = P_6(zuurstof,s_nh3,x_nh,Temp,pH); p_7 = P_7(x_nh); p_8 = P_8(zuurstof,s_hno2,x_no); p_9 = P_9(x_no,Temp); p_10 = P_10(s_nh,s_tno2,zuurstof,x_an,Temp,pH); 
-            p_11 = P_11(x_an, Temp)
-            
-            # New concentrations
-            solution_c[0,1+step] = zuurstof#s_o + Td*S_O(p_2,p_6,p_8);
-            solution_c[1,1+step] = s_s + Td*S_S(p_1,p_2,p_4,p_5); solution_c[2,1+step] = s_nh + Td*S_NH(p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11);
-            solution_c[3,1+step] = s_nh3 + Td*S_NH3(s_nh,pH,K_e_NH); solution_c[4,1+step] = solution_c[2,1+step]-solution_c[3,1+step]; solution_c[5,1+step] = s_tno2 + Td*S_TNO2(p_4,p_5,p_6,p_8,p_10);
-            solution_c[6,1+step] = s_hno2 + Td*S_HNO2(s_tno2,pH,K_e_NO); solution_c[7,1+step] = solution_c[5,1+step] - solution_c[6,1+step]; solution_c[8,1+step] = s_tno3 + Td*S_TNO3(p_4,p_8,p_10)
-            solution_c[9,1+step] = s_n2 + Td*S_N2(p_5,p_10); solution_c[10,1+step] = x_h + Td*X_H(p_2,p_3,p_4,p_5); solution_c[11,1+step] = x_nh + Td*X_NH(p_6,p_7); solution_c[12,1+step] = x_no + Td*X_NO(p_8,p_9); 
-            solution_c[13,1+step] = x_s + Td*X_S(p_1,p_3,p_7,p_9,p_11); solution_c[14,1+step] = x_i + Td*X_I(p_3,p_7,p_9,p_11); solution_c[15,1+step] = x_an + Td*X_AN(p_10,p_11)
-
-            volumes[step+1] = volumes[step]
-            solution_v[:,1+step] = solution_c[:,1+step]*volumes[step+1]/1000.0
-
-        result_p[:,i] = [p_1,p_2,p_3,p_4,p_5,p_6,p_7,p_8,p_9,p_10,p_11]
-
-        # Sludge information
-        x_h = solution_c[-6,-5]; x_nh = solution_c[-5,-5]; x_no = solution_c[-4,-5]; x_s = solution_c[-3,-5]; x_i = solution_c[-2,-5]; x_an = solution_c[-1,-5]
-        dsg_reactor = ((x_h+x_no+x_nh+x_s+x_an)/1.6+x_i)/1000
-        spuislib = 0
-        if dsg_reactor>dsg_max:
-            spuislib = (dsg_reactor-dsg_max)*reactor_volume
-
-        spuislib_m3 = spuislib/dsg_reactor
-        slibleeftijd = dsg_reactor*reactor_volume/spuislib/Batches
-
-        spuislib_matrix[0,i] = dsg_reactor
-        spuislib_matrix[1,i] = spuislib
-        spuislib_matrix[2,i] = spuislib_m3
-
-        # Effluent
-        solution_v[:,-4] = solution_v[:,-5]*Q_aanvoer/volumes[-5]
-        solution_v[-6:,-4] = solution_v[-6:,-4]*uitspoeling_slib
-        volumes[-4] = Q_aanvoer
-        solution_c[:,-4] = solution_v[:,-4]*1000/Q_aanvoer
-        # Stap 5 na aflaat
-        solution_v[:,-3] = solution_v[:,-5]-solution_v[:,-4]
-        volumes[-3] = reactor_volume
-        solution_c[:,-3] = solution_v[:,-3]*1000/volumes[-3]
-        # Stap 6 spuislib
-        solution_c[:,-2] = solution_c[:,-3]
-        volumes[-2] = spuislib_m3
-        solution_v[:,-2] = solution_c[:,-2]*volumes[-2]/1000
-        # Stap 7 na spuislib
-        solution_v[:,-1] = solution_v[:,-3] - solution_v[:,-2]
-        volumes[-1] = volumes[-3]
-        solution_c[:,-1] = solution_v[:,-1]*1000/volumes[-1]
-
-        result_matrix[:,i] = solution_c[:,-1]
+        print("Tabel wegschrijven ...")
+        my_table = {}
+        for tab in range(len(rows)):
+            my_table[rows[tab]] = result_matrix[tab,-1]
+        my_table["OC schoon"] = OC_schoon
+        my_table["slibleeftijd"] = slibleeftijd
+        output_table = str(output_path) + "\\tabel.csv"
+        with open(output_table, 'w') as f:
+            for key in my_table.keys():
+                f.write("%s,%s\n"%(key,my_table[key]))
+        print("Tabel weggeschreven")        
 
 
-    plott = True
-    if plott == True:
-        plt.plot(spuislib_matrix[0],label = "dsg reactor")
-        plt.plot(spuislib_matrix[1], label = "spuislib")
-        plt.plot(spuislib_matrix[2], label = "spuislib_m3")
-        plt.legend()
-        plt.savefig(r"Y:\NLDEV1\P\1274031\Projectinput en werkdocumenten\Python ASM Model\drogestofgehaltes_low_b.png")
-        plt.close()
 
-        figp, axesp = plt.subplots(4,3,figsize=(20,20))
-        plt.subplots_adjust(hspace=0.3,wspace = 0.3)
-        for indexp in range(11): #len(rows)
-            axesp[math.floor(indexp/3),indexp%3].plot(result_p[indexp])
-            axesp[math.floor(indexp/3),indexp%3].set_title("p_%i"%(indexp+1))
-        plt.savefig(r"Y:\NLDEV1\P\1274031\Projectinput en werkdocumenten\Python ASM Model\kinetische_factoren_low_b.png")
-        plt.close()
-
-        # Bij plotten: laat aanvoer, effluent en spuislib weg.
-        fig, axes = plt.subplots(4,4,figsize=(20, 20))
-        plt.subplots_adjust(hspace=0.3,wspace = 0.3)
-        for index in range(len(rows)): #len(rows)
-            #tank_plot = np.concatenate(([solution_c[index,0]],solution_c[index,2:-4],[solution_c[index,-3]],[solution_c[index,-1]]),axis=0)
-            if effluent_c[index] != 0:
-                axes[math.floor(index/4),index%4].hlines(y=effluent_c[index],xmin=0,xmax=iterations, color='r', linestyle='-')
-                #axes[math.floor(index/4),index%4].plot(effluent_c[index])
-            axes[math.floor(index/4),index%4].plot(result_matrix[index])
-            axes[math.floor(index/4),index%4].set_title(rows[index])
-        plt.savefig(r"Y:\NLDEV1\P\1274031\Projectinput en werkdocumenten\Python ASM Model\concentraties_low_b.png")
-        plt.close()
-
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input("Program crashed; press Enter to exit")
+        
     #print(solution_c[:,0:5])
     #print(solution_c[:,-5:-1])
     # # Aeration
