@@ -347,14 +347,16 @@ if __name__ == "__main__":
             # Effluent
             x_h = solution_c[-6,-3]; x_nh = solution_c[-5,-3]; x_no = solution_c[-4,-3]; x_s = solution_c[-3,-3]; x_i = solution_c[-2,-3]; x_an = solution_c[-1,-3]
             dsg_reactor = ((x_h+x_no+x_nh+x_s+x_an)/1.6+x_i)/1000
+            dsg_naeffluent = dsg_reactor*reactor_volume_totaal/reactor_volume
             # laat zoveel uitspoelen dat er 5,5 g/l overblijft
-            dsg_uitspoelen = max(dsg_reactor-dsg_max,0.0)
-            factor_uitspoelen = dsg_uitspoelen/dsg_reactor
-            slibleeftijd = (dsg_reactor/(dsg_uitspoelen))/(24*60/Batches)
+            dsg_uitspoelen_c = max(dsg_naeffluent-dsg_max,0.0)
+            factor_uitspoelen = (dsg_uitspoelen_c*reactor_volume)/(dsg_reactor*reactor_volume_totaal)
+
+            slibleeftijd = ((dsg_reactor*reactor_volume_totaal)/(dsg_uitspoelen_c*reactor_volume))/(24*60/Batches)
 
             volumes[-2] = Q_aanvoer
             solution_v[:,-2] = solution_v[:,-3]*volumes[-2]/volumes[-3]
-            solution_v[-6:,-2] = solution_v[-6:,-2]*factor_uitspoelen
+            solution_v[-6:,-2] = solution_v[-6:,-3]*factor_uitspoelen
             solution_c[:,-2] = solution_v[:,-2]*1000/volumes[-2]
             
             # Stap na aflaat
@@ -363,10 +365,14 @@ if __name__ == "__main__":
             solution_c[:,-1] = solution_v[:,-1]*1000/volumes[-1]
             result_matrix[:,i] = solution_c[:,-1]
 
+            #check dsg
+            x_h = solution_c[-6,-1]; x_nh = solution_c[-5,-1]; x_no = solution_c[-4,-1]; x_s = solution_c[-3,-1]; x_i = solution_c[-2,-1]; x_an = solution_c[-1,-1]
+            dsg_reactor_na = ((x_h+x_no+x_nh+x_s+x_an)/1.6+x_i)/1000
+
             result_vracht[i] = solution_c[0,-1]*(reactor_volume+Q_aanvoer)/1000
      
         #print("Het dgs, gewicht aan spuislib, volume en de slibleeftijd zijn: %f, %f, %f, %f"%(dsg_reactor, spuislib, volumes[-3],slibleeftijd))
-        print("Slibleeftijd, dsg_uitspoelen, dsg+uitspoel: %f, %f, %f"%(slibleeftijd,dsg_uitspoelen,dsg_reactor))
+        print("Slibleeftijd, dsg_na_effluent, dsg_effl, dsg_na: %f, %f, %f, %f"%(slibleeftijd,dsg_reactor_na,(dsg_uitspoelen_c*reactor_volume/Q_aanvoer), dsg_naeffluent))
         print("Alle iteraties zijn doorlopen.")
         print("Plots wegschrijven ...")
         plott = True
