@@ -206,7 +206,8 @@ if __name__ == "__main__":
         Perc_X_S = float(params["Perc_X_S"])
         Q_aanvoer = Dagaanvoer/(24/(Batches/60))
         Tijd_Q_aanvoer = float(params["Tijd_Q_aanvoer"])
-        Tijd_overig = Batches-Tijd_Q_aanvoer
+        Tijd_bezinking = float(params["Tijd_bezinking"])
+        Tijd_overig = Batches-Tijd_Q_aanvoer-Tijd_bezinking
         perc_CSV_S_s = float(params["perc_CSV_S_s"])
 
         # Fractionation feed
@@ -274,7 +275,7 @@ if __name__ == "__main__":
         feed_v = feed_c*Q_aanvoer_per_step/1000
         volumes[0] = reactor_volume
 
-        start = np.array([100.0,28.0,357.0,3.3,354.0,16.0,0.02,16.0,51.0,800.0,35.0,220.0,0.0,500.0,4000.0,2000.0])
+        start = np.array([100.0,28.0,357.0,3.3,354.0,16.0,0.02,16.0,51.0,800.0,35.0,220.0,1.0,500.0,4000.0,2000.0])
 
         solution_c[:,0] = start
 
@@ -424,7 +425,7 @@ if __name__ == "__main__":
         output_table = str(output_path) + "\\tabel.csv"
         with open(output_table, 'w') as f:
             for key in my_table.keys():
-                f.write("%s,%s\n"%(key,my_table[key]))
+                f.write("%s;%s\n"%(key,my_table[key]))
         print("Tabel weggeschreven")        
 
 
