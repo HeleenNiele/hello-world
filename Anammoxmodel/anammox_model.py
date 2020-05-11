@@ -1,6 +1,11 @@
-# This code solves the anammox model based on a selection of equations obtained from the
-# following sources:
-# FILL 
+"""" Deze code berekent de concentraties stoffen en biomassa in de DEMON-reactor in Echten.
+    Dit betekent dat er een vultijd en behandeltijd in zit, en dat het slib alleen via
+    uitspoeling en niet via spuien de tank verlaat. Bij een ander project zal dit spuien
+    waarschijnlijk toegevoegd moeten worden.
+    TODO spuien toevoegen
+    TODO invoer maken van startconcentraties
+""""
+
 
 import math
 import numpy as np
